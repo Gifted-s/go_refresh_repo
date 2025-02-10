@@ -1,4 +1,11 @@
+// Refresh Golang
 package main
+
+import (
+	"fmt"
+	"sync"
+	//"time"
+)
 
 type Order struct {
 	OrderId string
@@ -9,6 +16,19 @@ type MonthlyStoreEarnings struct {
 	StoreId     string
 	OrderIds    []string
 	TotalAmount float64
+}
+
+type Result struct {
+	mutex    sync.RWMutex
+	storeMap map[string]*MonthlyStoreEarnings
+}
+
+func NewMonthlyStoreEarnings(storeId string, orderId string, totalAmount float64) *MonthlyStoreEarnings {
+	return &MonthlyStoreEarnings{
+		StoreId:     storeId,
+		OrderIds:    []string{orderId},
+		TotalAmount: totalAmount,
+	}
 }
 
 func main() {
@@ -62,6 +82,37 @@ func main() {
 	processOrders(routines, orders)
 }
 
-func processOrders(concurrency int, orders []Order) {
+func processOrders(routines int, orders []Order) {
+	orderChan := make(chan Order)
+	wg := sync.WaitGroup{}
+	result := Result{storeMap: map[string]*MonthlyStoreEarnings{}}
 
+	for i := 0; i < routines; i++ {
+		wg.Add(1)
+		go worker(&wg, orderChan, &result)
+	}
+
+	for _, o := range orders {
+		orderChan <- o
+	}
+	close(orderChan)
+
+	wg.Wait()
+	for _, v := range result.storeMap {
+		fmt.Println(v)
+	}
+}
+
+func worker(wg *sync.WaitGroup, orderChan <-chan Order, result *Result) {
+	defer wg.Done()
+	for order := range orderChan {
+		result.mutex.Lock()
+		if earning, exists := result.storeMap[order.StoreId]; exists {
+			earning.TotalAmount += order.Amount
+			earning.OrderIds = append(earning.OrderIds, order.OrderId)
+		} else {
+			result.storeMap[order.StoreId] = NewMonthlyStoreEarnings(order.StoreId, order.OrderId, order.Amount)
+		}
+		result.mutex.Unlock()
+	}
 }

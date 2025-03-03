@@ -2,9 +2,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"sync"
-	//"time"
+	"time"
 )
 
 type Order struct {
@@ -31,7 +32,30 @@ func NewMonthlyStoreEarnings(storeId string, orderId string, totalAmount float64
 	}
 }
 
+func worker2(ctx context.Context) {
+    for {
+        select {
+        case <-ctx.Done():
+            fmt.Println("Worker stopped:", ctx.Err())
+            return
+        default:
+            // Do work
+            time.Sleep(time.Second)
+            fmt.Println("Working...")
+        }
+    }
+}
+
+
+
 func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+
+    go worker2(ctx)
+    time.Sleep(6 * time.Second)
+
+	
 	orders := []Order{
 		{
 			OrderId: "orderA-storeA",

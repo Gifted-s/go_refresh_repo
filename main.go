@@ -20,7 +20,7 @@ type MonthlyStoreEarnings struct {
 }
 
 type Result struct {
-	mutex    sync.RWMutex
+	mutex    sync.Mutex
 	storeMap map[string]*MonthlyStoreEarnings
 }
 
